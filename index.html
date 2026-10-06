@@ -1,0 +1,205 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Bit — tutor di informatica nel browser</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>💾</text></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --paper:#F7F9FD; --grid:#E2E8F3; --ink:#1F3A93; --text:#1C2333; --muted:#5B6577;
+  --margin:#D3394C; --bubble:#FFFFFF; --code-bg:#EEF2FA; --line:#CBD5E6;
+  --sans:"Atkinson Hyperlegible",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,Menlo,Consolas,monospace;
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px);
+}
+@media (prefers-color-scheme:dark){
+  :root{--paper:#121826;--grid:#1C2436;--ink:#93B2FF;--text:#E3E8F2;--muted:#94A0B8;
+    --margin:#F06B7B;--bubble:#1A2233;--code-bg:#0D1320;--line:#2C3850}
+}
+*,*::before,*::after{box-sizing:inherit}
+html,body{height:100%;margin:0}
+body{
+  background-color:var(--paper);
+  background-image:linear-gradient(var(--grid) 1px,transparent 1px),linear-gradient(90deg,var(--grid) 1px,transparent 1px);
+  background-size:22px 22px;
+  color:var(--text);font:17px/1.55 var(--sans);
+  display:flex;flex-direction:column;
+}
+header{
+  padding:14px 18px 12px 30px;border-bottom:2px solid var(--ink);
+  background:var(--paper);position:relative;
+}
+header::before{content:"";position:absolute;left:18px;top:0;bottom:0;width:2px;background:var(--margin)}
+h1{margin:0;font-size:1.6rem;color:var(--ink);letter-spacing:-.01em}
+.sub{margin:2px 0 0;color:var(--muted);font-size:.9rem}
+#status{margin:6px 0 0;font-size:.85rem;color:var(--muted)}
+.bar{height:4px;background:var(--grid);border-radius:2px;margin-top:6px;overflow:hidden;display:none}
+.bar i{display:block;height:100%;width:0;background:var(--ink);transition:width .2s}
+
+main{flex:1;overflow-y:auto;padding:18px 14px 8px}
+.wrap{max-width:720px;margin:0 auto}
+.intro{background:var(--bubble);border:1px solid var(--line);border-radius:6px;padding:16px 18px}
+.intro p{margin:0 0 12px}
+.btn{
+  font:700 1rem var(--sans);border:2px solid var(--ink);background:var(--ink);color:var(--paper);
+  padding:10px 16px;border-radius:6px;cursor:pointer
+}
+.btn.ghost{background:transparent;color:var(--ink)}
+.btn:disabled{opacity:.5;cursor:default}
+.btn:focus-visible,textarea:focus-visible,.chip:focus-visible{outline:3px solid var(--margin);outline-offset:2px}
+.chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px}
+.chip{font:.92rem var(--sans);background:var(--bubble);color:var(--ink);border:1px dashed var(--ink);border-radius:20px;padding:6px 12px;cursor:pointer}
+
+.msg{margin:14px 0;max-width:100%}
+.msg.user{margin-left:auto;width:fit-content;max-width:85%;background:var(--ink);color:var(--paper);padding:9px 14px;border-radius:14px 14px 3px 14px}
+.msg.bot{background:var(--bubble);border-left:3px solid var(--margin);padding:10px 14px;border-radius:0 6px 6px 0}
+.msg.bot p{margin:0 0 .6em}.msg.bot p:last-child{margin:0}
+.msg code{font:.88em var(--mono);background:var(--code-bg);padding:1px 5px;border-radius:3px}
+.msg pre{font:.85rem/1.5 var(--mono);background:var(--code-bg);padding:10px 12px;border-radius:4px;overflow-x:auto;margin:.4em 0 .8em}
+.msg pre code{background:none;padding:0}
+.cursor::after{content:"▍";color:var(--margin);animation:blink 1s steps(1) infinite}
+@keyframes blink{50%{opacity:0}}
+@media (prefers-reduced-motion:reduce){.cursor::after{animation:none}}
+
+footer{border-top:1px solid var(--line);background:var(--paper);padding:10px 12px calc(10px + env(safe-area-inset-bottom,0px))}
+form{max-width:720px;margin:0 auto;display:flex;gap:8px;align-items:flex-end}
+textarea{
+  flex:1;resize:none;font:1rem/1.4 var(--sans);color:var(--text);background:var(--bubble);
+  border:1px solid var(--line);border-radius:6px;padding:10px 12px;max-height:140px
+}
+</style>
+</head>
+<body>
+<header>
+  <h1>Bit</h1>
+  <p class="sub">Tutor di informatica che gira interamente sul tuo dispositivo</p>
+  <p id="status">Modello non caricato</p>
+  <div class="bar" id="bar"><i></i></div>
+</header>
+
+<main id="chat"><div class="wrap" id="log">
+  <div class="intro" id="intro">
+    <p>Bit risponde a domande di programmazione, algoritmi, reti, basi di dati e sistemi operativi. Il modello (Qwen2.5 0.5B) viene scaricato una volta, circa 500 MB, e poi resta in cache: le domande non lasciano il telefono.</p>
+    <button class="btn" id="load">Scarica il modello</button>
+    <div class="chips" id="chips" hidden></div>
+  </div>
+</div></main>
+
+<footer>
+  <form id="form">
+    <textarea id="input" rows="1" placeholder="Scrivi una domanda di informatica" disabled></textarea>
+    <button class="btn" id="send" type="submit" disabled>Invia</button>
+  </form>
+</footer>
+
+<script>
+const SYSTEM = `Sei Bit, un tutor di informatica. Rispondi sempre in italiano, in modo chiaro e conciso, con esempi di codice brevi quando servono.
+Rispondi solo a domande di informatica: programmazione, algoritmi e strutture dati, reti, sistemi operativi, basi di dati, architettura dei calcolatori, sicurezza informatica, ingegneria del software.
+Se la domanda riguarda altro, rispondi soltanto: "Posso aiutarti solo con domande di informatica."
+Se non sei sicuro di qualcosa, dillo invece di inventare.`;
+const MAX_HISTORY = 6;
+const SUGGEST = ["Differenza tra TCP e UDP","Come funziona il quicksort?","Cos'è una chiave esterna in SQL?","Spiegami la ricorsione con un esempio in Python"];
+
+const workerSrc = `
+import { pipeline, TextStreamer, InterruptableStoppingCriteria } from "https://cdn.jsdelivr.net/npm/@huggingface/transformers@3";
+const MODEL = "onnx-community/Qwen2.5-0.5B-Instruct";
+let gen = null; const stopper = new InterruptableStoppingCriteria();
+async function detect(){
+  try{ if(navigator.gpu){ const a = await navigator.gpu.requestAdapter();
+    if(a) return { device:"webgpu", dtype: a.features.has("shader-f16") ? "q4f16" : "q4" }; } }catch(e){}
+  return { device:"wasm", dtype:"q4" };
+}
+self.onmessage = async (e) => {
+  const m = e.data;
+  if(m.type === "load"){
+    try{
+      const cfg = await detect(); self.postMessage({ type:"device", ...cfg });
+      gen = await pipeline("text-generation", MODEL, { ...cfg, progress_callback: p => self.postMessage({ type:"progress", p }) });
+      self.postMessage({ type:"ready" });
+    }catch(err){ self.postMessage({ type:"error", message:String(err?.message || err) }); }
+  } else if(m.type === "generate"){
+    stopper.reset();
+    const streamer = new TextStreamer(gen.tokenizer, { skip_prompt:true, skip_special_tokens:true,
+      callback_function: t => self.postMessage({ type:"token", t }) });
+    try{
+      await gen(m.messages, { max_new_tokens:768, do_sample:true, temperature:0.3, top_p:0.9,
+        repetition_penalty:1.1, streamer, stopping_criteria:stopper });
+    }catch(err){ self.postMessage({ type:"error", message:String(err?.message || err) }); }
+    self.postMessage({ type:"done" });
+  } else if(m.type === "stop"){ stopper.interrupt(); }
+};`;
+
+const $ = id => document.getElementById(id);
+const worker = new Worker(URL.createObjectURL(new Blob([workerSrc], { type:"text/javascript" })), { type:"module" });
+const files = {}; let history = []; let busy = false; let botEl = null; let botText = "";
+
+function setStatus(t){ $("status").textContent = t; }
+function esc(s){ return s.replace(/[&<>"]/g, c => ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;" }[c])); }
+function md(src){
+  return src.split(/```/).map((part, i) => {
+    if(i % 2){ const nl = part.indexOf("\n"); return "<pre><code>" + esc(nl >= 0 ? part.slice(nl + 1) : part) + "</code></pre>"; }
+    return esc(part).replace(/`([^`\n]+)`/g, "<code>$1</code>").replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>")
+      .split(/\n{2,}/).filter(p => p.trim()).map(p => "<p>" + p.replace(/\n/g, "<br>") + "</p>").join("");
+  }).join("");
+}
+function add(role, html){
+  const d = document.createElement("div"); d.className = "msg " + role; d.innerHTML = html;
+  $("log").appendChild(d); $("chat").scrollTop = $("chat").scrollHeight; return d;
+}
+function setBusy(b){
+  busy = b; $("send").textContent = b ? "Ferma" : "Invia"; $("input").disabled = b;
+  $("send").classList.toggle("ghost", b);
+}
+
+worker.onmessage = ({ data:m }) => {
+  if(m.type === "device") setStatus(m.device === "webgpu" ? "Uso la GPU (WebGPU)" : "WebGPU non disponibile: uso la CPU, sarà più lento");
+  else if(m.type === "progress" && m.p.status === "progress"){
+    files[m.p.file] = { l:m.p.loaded, t:m.p.total };
+    const v = Object.values(files), l = v.reduce((a, f) => a + f.l, 0), t = v.reduce((a, f) => a + f.t, 0);
+    $("bar").firstChild.style.width = (t ? l / t * 100 : 0) + "%";
+    setStatus(`Scaricamento ${(l / 1e6).toFixed(0)} di ${(t / 1e6).toFixed(0)} MB`);
+  }
+  else if(m.type === "ready"){
+    $("bar").style.display = "none"; setStatus("Pronto. Il modello è salvato in cache.");
+    $("load").hidden = true; $("input").disabled = false; $("send").disabled = false;
+    const c = $("chips"); c.hidden = false;
+    SUGGEST.forEach(s => { const b = document.createElement("button"); b.className = "chip"; b.type = "button"; b.textContent = s;
+      b.onclick = () => ask(s); c.appendChild(b); });
+    $("input").focus();
+  }
+  else if(m.type === "token"){ botText += m.t; botEl.innerHTML = md(botText); $("chat").scrollTop = $("chat").scrollHeight; }
+  else if(m.type === "done"){
+    botEl.classList.remove("cursor"); history.push({ role:"assistant", content:botText }); setBusy(false); $("input").focus();
+  }
+  else if(m.type === "error"){
+    setStatus("Errore: " + m.message + ". Ricarica la pagina e riprova.");
+    $("load").disabled = false;
+  }
+};
+
+$("load").onclick = () => { $("load").disabled = true; $("bar").style.display = "block"; setStatus("Avvio…"); worker.postMessage({ type:"load" }); };
+
+function ask(q){
+  if(busy || !q.trim()) return;
+  $("chips").hidden = true;
+  add("user", esc(q)); history.push({ role:"user", content:q });
+  history = history.slice(-MAX_HISTORY);
+  botText = ""; botEl = add("bot cursor", ""); setBusy(true);
+  worker.postMessage({ type:"generate", messages:[{ role:"system", content:SYSTEM }, ...history] });
+}
+
+$("form").onsubmit = e => {
+  e.preventDefault();
+  if(busy){ worker.postMessage({ type:"stop" }); return; }
+  const q = $("input").value; $("input").value = ""; $("input").style.height = ""; ask(q);
+};
+$("input").addEventListener("input", e => { e.target.style.height = ""; e.target.style.height = e.target.scrollHeight + "px"; });
+$("input").addEventListener("keydown", e => { if(e.key === "Enter" && !e.shiftKey){ e.preventDefault(); $("form").requestSubmit(); } });
+</script>
+</body>
+</html>
